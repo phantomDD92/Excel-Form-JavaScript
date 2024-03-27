@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel to HTML Form</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1 class="mt-5">Upload Excel File</h1>
+    <div class="mb-3">
+      <input class="form-control" type="file" id="fileInput" accept=".xlsx">
+    </div>
+    <div id="form-container" class="mt-3"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.0/xlsx.full.min.js"></script>
+  <script>
+    // Function to handle file input change event
+    function handleFileInputChange(event) {
+      const file = event.target.files[0];
+      
+      if (!file) return;
+
+      const reader = new FileReader();
+      
+      reader.onload = function(event) {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Assuming the first sheet is the one containing the form data
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        // Convert sheet data to JSON format
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        // Handle the extracted data
+        handleFormData(jsonData);
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Function to handle form data
+    function handleFormData(data) {
+      let formHTML = "<form>";
+
+      // Loop through each row of Excel data
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const fieldName = row[0];
+        const fieldType = row[1];
+        const additionalInfo = row[2];
+
+        formHTML += `<div class="mb-3"><label for="${fieldName}" class="form-label">${fieldName}</label>`;
+
+        // Generate HTML based on field type
+        if (fieldType === "text" || fieldType === "email") {
+          formHTML += `<input type="${fieldType}" class="form-control" id="${fieldName}" name="${fieldName}" placeholder="${fieldName}" required></div>`;
+        } else if (fieldType === "select") {
+          const options = additionalInfo.split(",");
+          formHTML += `<select class="form-select" id="${fieldName}" name="${fieldName}" required>`;
+          options.forEach(option => {
+            formHTML += `<option value="${option.trim()}">${option.trim()}</option>`;
+          });
+          formHTML += `</select></div>`;
+        } else if (fieldType === "textarea") {
+          formHTML += `<textarea class="form-control" id="${fieldName}" name="${fieldName}" placeholder="${fieldName}" required></textarea></div>`;
+        }
+      }
+
+      formHTML += "<button type='submit' class='btn btn-primary mt-3'>Submit</button>";
+      formHTML += "</form>";
+
+      // Render the HTML form
+      const formContainer = document.getElementById("form-container");
+      formContainer.innerHTML = formHTML;
+    }
+
+    // Attach event listener to file input element
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', handleFileInputChange);
+  </script>
+</body>
+</html>
